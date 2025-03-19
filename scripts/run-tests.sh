@@ -2,4 +2,4 @@
 
 # Script to run tests using pytest
 echo "-> running pytest ..."
-uv run coverage run -m pytest tests/
+uv run -m pytest tests/ -v

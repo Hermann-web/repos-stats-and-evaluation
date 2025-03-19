@@ -12,7 +12,7 @@ from src.download_repos import (
 )
 
 
-def main():
+def main() -> None:
     """Main function to process repositories."""
     create_download_dir(DOWNLOADS_DIR)
     repos = read_repos_file(INPUT_FILE)

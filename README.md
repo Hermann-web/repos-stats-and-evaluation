@@ -1,6 +1,6 @@
 # Git Repository Analyzer
 
-A powerful tool for analyzing Git repositories with an interactive Streamlit dashboard. This tool helps you visualize repository statistics, commit history, file structures, and contributor activities.
+A simple tool for analyzing Git repositories with an interactive Streamlit dashboard. This tool helps you visualize repository statistics, commit history, file structures, and contributor activities.
 
 ## Features
 
@@ -28,7 +28,7 @@ A powerful tool for analyzing Git repositories with an interactive Streamlit das
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/yourusername/git-repo-analyzer.git
+git clone https://github.com/hermann-web/git-repo-analyzer.git
 cd git-repo-analyzer
 ```
 
@@ -56,7 +56,7 @@ python download.py
 This will:
 - Create a downloads directory
 - Clone or update specified repositories
-- Organize repos by group ID
+- Organize repos by autoincremented group ID
 
 ### 2. Launch Dashboard
 
@@ -102,7 +102,9 @@ The dashboard provides:
 
 ## Screenshots
 
-[Screenshots to be added]
+![Interface 1](./assets/img/interface1.png)
+
+![Interface 2](./assets/img/interface2.png)
 
 ## Configuration
 

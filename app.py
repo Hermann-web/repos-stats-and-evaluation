@@ -1,7 +1,10 @@
+import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import plotly.express as px  # type: ignore
@@ -12,7 +15,7 @@ sys.path.append(".")
 from src.repo_stats import RepoReport, RepoStats
 
 
-def find_repositories(base_path):
+def find_repositories(base_path: str):
     """Find all git repositories in the given path"""
     return [str(path.parent) for path in Path(base_path).rglob(".git")]
 
@@ -51,6 +54,26 @@ def main():
                 format_func=lambda i: repo_names[i],
             )
 
+            st.sidebar.header("File Structure Options")
+            show_file_structure = st.sidebar.checkbox("Show File Structure", value=True)
+            max_depth = st.sidebar.slider(
+                "Max Depth",
+                min_value=0,
+                max_value=10,
+                value=3,
+                help="Maximum directory depth to display (Set to 0 for full depth)",
+            )
+            exclude_patterns_input = st.sidebar.text_area(
+                "Exclude Patterns (Regex, one per line)",
+                value=".git\n__pycache__\n.pytest_cache\n.venv\nnode_modules",
+                help="Regular expressions for paths to exclude, one per line",
+            )
+            exclude_patterns = [
+                p.strip() for p in exclude_patterns_input.split("\n") if p.strip()
+            ]
+
+            st.sidebar.header("Date Range Options")
+
             start_date = st.sidebar.date_input(
                 "Start Date", value=start_date_default.date()
             )
@@ -83,7 +106,10 @@ def main():
                 ):
                     repo_stats = RepoStats(selected_repo_path)
                     report: RepoReport = repo_stats.generate_report(
-                        start_date=start_date, end_date=end_date
+                        start_date=start_date,
+                        end_date=end_date,
+                        max_depth=max_depth if max_depth > 0 else None,
+                        exclude_patterns=exclude_patterns,
                     )
 
                 # Display repository link with a nice button
@@ -97,32 +123,36 @@ def main():
                             border-radius: 5px; 
                             text-decoration: none; 
                             font-size: 16px;
-                        ">View Repository</a>
+                        ">Repository : {report.repository}</a>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
                 # Display repository statistics
-                col1, col2 = st.columns([1, 2])
+                col1, col2, col3 = st.columns([0.75, 0.75, 1.5])
 
                 with col1:
                     st.header("Basic Statistics")
-                    st.metric("Repository", report.repository)
                     st.metric("Total Commits", report.basic_stats.total_commits)
                     st.metric("Active Branches", report.basic_stats.active_branches)
                     st.metric("Contributors", report.basic_stats.contributors)
                     st.metric(
-                        "Repository Size", f"{report.basic_stats.repo_size_mb} MB"
-                    )
-                    st.metric(
                         "Last Commit",
-                        report.basic_stats.last_commit.strftime("%Y-%m-%d %H:%M:%S"),
+                        report.basic_stats.last_commit.strftime("%Y-%m-%d %H:%M"),
                     )
 
                 with col2:
                     st.header("File Statistics")
 
+                    # Total files and lines
+                    st.metric("Total Files", report.file_stats.total_files)
+                    st.metric("Total Lines", report.file_stats.total_lines)
+                    st.metric(
+                        "Repository Size", f"{report.basic_stats.repo_size_mb} MB"
+                    )
+
+                with col3:
                     # File type distribution
                     file_types = report.file_stats.file_types
                     if file_types:
@@ -142,9 +172,54 @@ def main():
                         )
                         st.plotly_chart(fig)
 
-                    # Total files and lines
-                    st.metric("Total Files", report.file_stats.total_files)
-                    st.metric("Total Lines", report.file_stats.total_lines)
+                if show_file_structure:
+                    st.header("File Structure")
+
+                    if report.file_structure:
+                        # Helper function to display the tree structure
+                        def format_tree(
+                            tree: dict[str, Any], indent: str = ""
+                        ) -> list[str]:
+                            result = []
+                            for i, (key, value) in enumerate(tree.items()):
+                                is_last = i == len(tree) - 1
+                                prefix = "└── " if is_last else "├── "
+
+                                if isinstance(value, dict):
+                                    result.append(f"{indent}{prefix}{key}/")
+                                    next_indent = indent + (
+                                        "    " if is_last else "│   "
+                                    )
+                                    result.extend(format_tree(value, next_indent))
+                                elif value == "...":
+                                    result.append(f"{indent}{prefix}{key}/ ...")
+                                else:
+                                    result.append(f"{indent}{prefix}{value}")
+                            return result
+
+                        structure = report.file_structure.structure
+
+                        # Create tabs for different views
+                        tab1, tab2 = st.tabs(["Tree View", "Raw JSON"])
+
+                        with tab1:
+                            if structure:
+                                st.code("\n".join(format_tree(structure)), language="")
+                            else:
+                                st.info("No files found or all files were excluded")
+
+                        with tab2:
+                            st.code(json.dumps(structure, indent=2), language="json")
+
+                        # Show exclusion information
+                        if report.file_structure.excluded_patterns:
+                            st.caption(
+                                f"Excluded patterns: {', '.join(report.file_structure.excluded_patterns)}"
+                            )
+                        if report.file_structure.max_depth is not None:
+                            st.caption(
+                                f"Maximum depth: {report.file_structure.max_depth}"
+                            )
 
                 # Recent activity
                 st.header("Recent Activity")
