@@ -24,7 +24,7 @@ from src.repo_stats import (
 
 class TestRepoStatsEdgeCases:
     @pytest.fixture
-    def mock_repo(self) -> None:
+    def mock_repo(self) -> MagicMock:
         """Create a mock Git repository for testing edge cases."""
         mock_repo = MagicMock()
         mock_repo.working_tree_dir = "/mock/repo/path"

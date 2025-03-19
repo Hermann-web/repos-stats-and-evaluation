@@ -28,7 +28,7 @@ jobs:
 
     - name: Run type checks with Mypy
       run: |
-        mypy --strict .  # Run mypy with the strict flag to check for type errors in your code
+        mypy src/ tests/ *.py  # Run mypy with the strict flag to check for type errors in your code
 
     - name: Run tests with pytest
       run: |

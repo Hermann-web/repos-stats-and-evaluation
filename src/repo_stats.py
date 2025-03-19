@@ -4,12 +4,11 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, TypeVar, Union
 
 import git
 import pandas as pd
 
-TreeObject = TypeVar("T", bound=Union[str, dict[str, Any], None])
+from src.file_structure import FileStructureAnalyzer
 
 
 @dataclass
@@ -47,7 +46,7 @@ class CommitEntry:
 
 @dataclass
 class FileStructure:
-    structure: dict[str, str | dict[str, Any] | None]
+    structure: dict[str, FileStructureAnalyzer.TreeObject]
     excluded_patterns: list[str]
     max_depth: int | None
 
@@ -151,57 +150,6 @@ class RepoStats:
             )
         return round(total_size / (1024 * 1024), 2)  # Convert to MB
 
-    def get_file_structure(
-        self,
-        max_depth: Optional[int] = None,
-        exclude_patterns: Optional[list[str]] = None,
-    ) -> dict[str, TreeObject]:
-        """
-        Get the file structure of the repository with options for depth control and exclusion patterns.
-
-        Args:
-            max_depth (int, optional): Maximum depth to traverse (None for unlimited)
-            exclude_patterns (list, optional): List of regex patterns to exclude
-
-        Returns:
-            dict: A nested dictionary representing the file structure
-        """
-
-        exclude_patterns = exclude_patterns or []
-        compiled_patterns = [re.compile(pattern) for pattern in exclude_patterns]
-
-        def should_exclude(path_str: str) -> bool:
-            for pattern in compiled_patterns:
-                if pattern.search(path_str):
-                    return True
-            return False
-
-        def build_tree(path: str, current_depth: int = 0) -> TreeObject:
-            if max_depth is not None and current_depth > max_depth:
-                return "..."
-
-            path_str = str(path)
-            if should_exclude(path_str):
-                return None
-
-            if path.is_file():
-                return str(path.name)
-
-            result = {}
-            try:
-                for child in sorted(path.iterdir()):
-                    child_result = build_tree(child, current_depth + 1)
-                    if child_result is not None:
-                        result[child.name] = child_result
-            except PermissionError:
-                return "Permission denied"
-
-            return result
-
-        root_path = Path(self.working_tree_dir)
-        tree: dict[str, TreeObject] = {root_path.name: build_tree(root_path)}
-        return tree
-
     def generate_report(
         self, start_date, end_date, max_depth=None, exclude_patterns=None
     ) -> RepoReport:
@@ -224,12 +172,15 @@ class RepoStats:
             )
 
         # Get file structure with optional depth and exclusion patterns
-        file_structure = FileStructure(
-            structure=self.get_file_structure(
-                max_depth=max_depth, exclude_patterns=exclude_patterns
-            ),
-            excluded_patterns=exclude_patterns or [],
+        fs = FileStructureAnalyzer(
+            directory=str(self.working_tree_dir),
+            exclude_patterns=exclude_patterns,
             max_depth=max_depth,
+        )
+        file_structure = FileStructure(
+            structure=fs.get_file_structure(),
+            excluded_patterns=fs.exclude_patterns,
+            max_depth=fs.max_depth,
         )
 
         return RepoReport(

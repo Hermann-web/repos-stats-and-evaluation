@@ -10,6 +10,8 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 import streamlit as st
 
+from src.utils import format_tree
+
 sys.path.append(".")
 
 from src.repo_stats import RepoReport, RepoStats
@@ -20,7 +22,7 @@ def find_repositories(base_path: str):
     return [str(path.parent) for path in Path(base_path).rglob(".git")]
 
 
-def main():
+def main() -> None:
     end_date_default = datetime(2025, 3, 18, 23, 0, 0, tzinfo=timezone.utc)
     start_date_default = datetime(2025, 3, 7, 23, 0, 0, tzinfo=timezone.utc)
 
@@ -176,27 +178,6 @@ def main():
                     st.header("File Structure")
 
                     if report.file_structure:
-                        # Helper function to display the tree structure
-                        def format_tree(
-                            tree: dict[str, Any], indent: str = ""
-                        ) -> list[str]:
-                            result = []
-                            for i, (key, value) in enumerate(tree.items()):
-                                is_last = i == len(tree) - 1
-                                prefix = "└── " if is_last else "├── "
-
-                                if isinstance(value, dict):
-                                    result.append(f"{indent}{prefix}{key}/")
-                                    next_indent = indent + (
-                                        "    " if is_last else "│   "
-                                    )
-                                    result.extend(format_tree(value, next_indent))
-                                elif value == "...":
-                                    result.append(f"{indent}{prefix}{key}/ ...")
-                                else:
-                                    result.append(f"{indent}{prefix}{value}")
-                            return result
-
                         structure = report.file_structure.structure
 
                         # Create tabs for different views

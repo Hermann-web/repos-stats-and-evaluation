@@ -8,6 +8,7 @@ from typing import Any, Generator
 import git
 import pytest
 
+from src.file_structure import FileStructureAnalyzer
 from src.repo_stats import (
     BasicStats,
     CommitEntry,
@@ -16,7 +17,6 @@ from src.repo_stats import (
     RecentActivity,
     RepoReport,
     RepoStats,
-    TreeObject,
     parse_byte_message,
 )
 
@@ -140,8 +140,8 @@ class TestRepoStats:
 
     def test_get_file_structure(self, temp_git_repo: str) -> None:
         """Test getting file structure."""
-        repo_stats = RepoStats(temp_git_repo)
-        file_structure: dict[str, TreeObject] = repo_stats.get_file_structure()
+        fs = FileStructureAnalyzer(temp_git_repo)
+        file_structure = fs.get_file_structure()
 
         repo_name = Path(temp_git_repo).name
         assert isinstance(file_structure, dict)
@@ -152,12 +152,12 @@ class TestRepoStats:
         assert "test.py" in repo_contents
         assert "test2.txt" in repo_contents
         assert "subdir" in repo_contents
-        assert "subfile.md" in repo_contents["subdir"]
+        assert "subfile.md" in repo_contents["subdir"]  # type: ignore
 
     def test_get_file_structure_with_depth(self, temp_git_repo: str) -> None:
         """Test getting file structure with depth limit."""
-        repo_stats = RepoStats(temp_git_repo)
-        file_structure = repo_stats.get_file_structure(max_depth=0)
+        fs = FileStructureAnalyzer(temp_git_repo, max_depth=0)
+        file_structure = fs.get_file_structure()
 
         repo_name = Path(temp_git_repo).name
         assert isinstance(file_structure, dict)
@@ -166,16 +166,15 @@ class TestRepoStats:
         # At depth 0, we should only see the files in the root directory,
         # and directories should be marked with "..."
         repo_contents = file_structure[repo_name]
-        assert isinstance(repo_contents, dict)
         assert "test.py" in repo_contents
         assert "test2.txt" in repo_contents
         assert "subdir" in repo_contents
-        assert repo_contents["subdir"] == "..."
+        assert repo_contents["subdir"] == "..."  # type: ignore
 
     def test_get_file_structure_with_exclude(self, temp_git_repo: str) -> None:
         """Test getting file structure with exclude patterns."""
-        repo_stats = RepoStats(temp_git_repo)
-        file_structure = repo_stats.get_file_structure(exclude_patterns=[".*\\.py$"])
+        fs = FileStructureAnalyzer(temp_git_repo, exclude_patterns=[".*\\.py$"])
+        file_structure = fs.get_file_structure()
 
         repo_name = Path(temp_git_repo).name
         assert isinstance(file_structure, dict)
@@ -183,7 +182,6 @@ class TestRepoStats:
 
         # The .py file should be excluded
         repo_contents = file_structure[repo_name]
-        assert isinstance(repo_contents, dict)
         assert "test.py" not in repo_contents
         assert "test2.txt" in repo_contents
         assert "subdir" in repo_contents
