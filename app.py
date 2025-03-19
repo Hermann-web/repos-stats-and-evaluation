@@ -1,16 +1,12 @@
 import json
 import os
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import plotly.express as px  # type: ignore
 import streamlit as st
-
-from src.utils import format_tree
 
 sys.path.append(".")
 
@@ -177,30 +173,31 @@ def main() -> None:
                 if show_file_structure:
                     st.header("File Structure")
 
-                    if report.file_structure:
-                        structure = report.file_structure.structure
+                    structure_raw_json: str = report.file_structure.structure_raw_json
+                    formated_tree: list[str] = report.file_structure.structure_formated
 
-                        # Create tabs for different views
-                        tab1, tab2 = st.tabs(["Tree View", "Raw JSON"])
+                    # Create tabs for different views
+                    tab1, tab2 = st.tabs(["Tree View", "Raw JSON"])
 
-                        with tab1:
-                            if structure:
-                                st.code("\n".join(format_tree(structure)), language="")
-                            else:
-                                st.info("No files found or all files were excluded")
+                    with tab1:
+                        if formated_tree:
+                            st.code("\n".join(formated_tree), language="")
+                        else:
+                            st.info("No files found or all files were excluded")
 
-                        with tab2:
-                            st.code(json.dumps(structure, indent=2), language="json")
+                    with tab2:
+                        st.code(
+                            json.dumps(structure_raw_json, indent=2),
+                            language="json",
+                        )
 
-                        # Show exclusion information
-                        if report.file_structure.excluded_patterns:
-                            st.caption(
-                                f"Excluded patterns: {', '.join(report.file_structure.excluded_patterns)}"
-                            )
-                        if report.file_structure.max_depth is not None:
-                            st.caption(
-                                f"Maximum depth: {report.file_structure.max_depth}"
-                            )
+                    # Show exclusion information
+                    if report.file_structure.excluded_patterns:
+                        st.caption(
+                            f"Excluded patterns: {', '.join(report.file_structure.excluded_patterns)}"
+                        )
+                    if report.file_structure.max_depth is not None:
+                        st.caption(f"Maximum depth: {report.file_structure.max_depth}")
 
                 # Recent activity
                 st.header("Recent Activity")

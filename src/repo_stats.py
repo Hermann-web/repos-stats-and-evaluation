@@ -1,5 +1,4 @@
 import os
-import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,6 +46,8 @@ class CommitEntry:
 @dataclass
 class FileStructure:
     structure: dict[str, FileStructureAnalyzer.TreeObject]
+    structure_raw_json: str
+    structure_formated: list[str]
     excluded_patterns: list[str]
     max_depth: int | None
 
@@ -60,7 +61,7 @@ class RepoReport:
     file_stats: FileStats
     recent_activity: RecentActivity | None
     commit_history: list[CommitEntry]
-    file_structure: FileStructure | None = None
+    file_structure: FileStructure
 
 
 def parse_byte_message(text: str | bytes | None):
@@ -177,8 +178,11 @@ class RepoStats:
             exclude_patterns=exclude_patterns,
             max_depth=max_depth,
         )
+        structure, raw_json_structure, tree_view_structure = fs.get_formated_tree()
         file_structure = FileStructure(
-            structure=fs.get_file_structure(),
+            structure=structure,
+            structure_raw_json=raw_json_structure,
+            structure_formated=tree_view_structure,
             excluded_patterns=fs.exclude_patterns,
             max_depth=fs.max_depth,
         )
