@@ -1,5 +1,7 @@
 # Git Repository Analyzer
 
+![Tests](https://github.com/Hermann-web/coding-week-repos-stats/actions/workflows/run-tests.yml/badge.svg)
+
 A simple tool for analyzing Git repositories with an interactive Streamlit dashboard. This tool helps you visualize repository statistics, commit history, file structures, and contributor activities.
 
 ## Features
