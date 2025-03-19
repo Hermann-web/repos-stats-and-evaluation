@@ -3,15 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Define paths
-DOWNLOADS_DIR = Path("downloads")
-INPUT_FILE = Path("repos")
-
 
 def create_download_dir(directory: Path) -> None:
     """Create the downloads directory if it doesn't exist."""
@@ -44,23 +35,3 @@ def clone_or_update_repo(repo_url: str, folder: Path) -> None:
     else:
         logging.info("Cloning %s into %s...", repo_url, folder)
         subprocess.run(["git", "clone", repo_url, str(folder)], check=False)
-
-
-def main():
-    """Main function to process repositories."""
-    create_download_dir(DOWNLOADS_DIR)
-    repos = read_repos_file(INPUT_FILE)
-
-    logging.info("Starting repository downloads...")
-
-    for group_id, repo_url in repos.items():
-        repo_name = Path(repo_url).stem.replace(".git", "")
-        folder = DOWNLOADS_DIR / f"{group_id}-{repo_name}"
-        clone_or_update_repo(repo_url, folder)
-        logging.info("------------------------")
-
-    logging.info("All repositories downloaded successfully!")
-
-
-if __name__ == "__main__":
-    main()

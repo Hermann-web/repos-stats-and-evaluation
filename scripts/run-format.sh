@@ -9,4 +9,4 @@ echo "-> running ruff format ..."
 uv run ruff format src/ tests/ *.py # Format code using ruff
 
 echo "-> running mypy ..."
-uv run mypy src/ tests/ *.py
+uv run mypy src/ tests/ *.py --check-untyped-defs

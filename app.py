@@ -4,12 +4,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 import streamlit as st
 
 sys.path.append(".")
 
-from src.repo_stats import RepoStats
+from src.repo_stats import RepoReport, RepoStats
 
 
 def find_repositories(base_path):
@@ -40,9 +40,11 @@ def main():
 
     # Find repositories
     if os.path.exists(repo_base_path):
-        repo_paths = find_repositories(repo_base_path)
+        repo_paths = sorted(
+            find_repositories(repo_base_path), key=lambda x: Path(x).name
+        )
         if repo_paths:
-            repo_names = sorted([Path(path).name for path in repo_paths])
+            repo_names = [Path(path).name for path in repo_paths]
             selected_repo_index = st.sidebar.selectbox(
                 "Select Repository",
                 range(len(repo_names)),
@@ -62,8 +64,14 @@ def main():
                 tzinfo=timezone.utc
             )
 
-            st.write(
-                f"Date Range: {start_date.strftime('%Y-%m-%d')} ----> {end_date.strftime('%Y-%m-%d')}"
+            # Display selected date range with better styling
+            st.markdown(
+                f"""
+                <div style="padding: 10px; background-color: #f0f2f6; color:black; border-radius: 10px; text-align: center;">
+                    <b>Date Range:</b> {start_date.strftime("%Y-%m-%d (%H:%M)")} → {end_date.strftime("%Y-%m-%d (%H:%M)")}
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
             # Analyze selected repository
@@ -74,36 +82,49 @@ def main():
                     f"Analyzing repository: {repo_names[selected_repo_index]}..."
                 ):
                     repo_stats = RepoStats(selected_repo_path)
-                    report = repo_stats.generate_report(
+                    report: RepoReport = repo_stats.generate_report(
                         start_date=start_date, end_date=end_date
                     )
+
+                # Display repository link with a nice button
+                st.markdown(
+                    f"""
+                    <div style="text-align: center; margin-top: 10px;">
+                        <a href="{report.repository_url}" target="_blank" style="
+                            background-color: #0078ff; 
+                            color: white; 
+                            padding: 10px 20px; 
+                            border-radius: 5px; 
+                            text-decoration: none; 
+                            font-size: 16px;
+                        ">View Repository</a>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 # Display repository statistics
                 col1, col2 = st.columns([1, 2])
 
                 with col1:
                     st.header("Basic Statistics")
-                    st.metric("Repository", report["repository"])
-                    st.metric("Total Commits", report["basic_stats"]["total_commits"])
+                    st.metric("Repository", report.repository)
+                    st.metric("Total Commits", report.basic_stats.total_commits)
+                    st.metric("Active Branches", report.basic_stats.active_branches)
+                    st.metric("Contributors", report.basic_stats.contributors)
                     st.metric(
-                        "Active Branches", report["basic_stats"]["active_branches"]
-                    )
-                    st.metric("Contributors", report["basic_stats"]["contributors"])
-                    st.metric(
-                        "Repository Size", f"{report['basic_stats']['repo_size_mb']} MB"
+                        "Repository Size", f"{report.basic_stats.repo_size_mb} MB"
                     )
                     st.metric(
                         "Last Commit",
-                        report["basic_stats"]["last_commit"].strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
+                        report.basic_stats.last_commit.strftime("%Y-%m-%d %H:%M:%S"),
                     )
 
                 with col2:
                     st.header("File Statistics")
 
                     # File type distribution
-                    file_types = report["file_stats"]["file_types"]
+                    file_types = report.file_stats.file_types
                     if file_types:
                         file_df = pd.DataFrame(
                             {
@@ -122,16 +143,28 @@ def main():
                         st.plotly_chart(fig)
 
                     # Total files and lines
-                    st.metric("Total Files", report["file_stats"]["total_files"])
-                    st.metric("Total Lines", report["file_stats"]["total_lines"])
+                    st.metric("Total Files", report.file_stats.total_files)
+                    st.metric("Total Lines", report.file_stats.total_lines)
 
                 # Recent activity
                 st.header("Recent Activity")
 
-                if report["commit_history_df"].empty:
+                if len(report.commit_history) == 0:
                     st.info(f"No commits found")
                 else:
-                    commit_df = report["commit_history_df"]
+                    commit_df = pd.DataFrame(
+                        [c.__dict__ for c in report.commit_history]
+                    )
+                    commit_df["date_only"] = pd.to_datetime(
+                        commit_df["date"], utc=True
+                    ).dt.date
+
+                    commit_df["author"] = (
+                        commit_df["author_name"]
+                        + " <"
+                        + commit_df["author_email"]
+                        + ">"
+                    )
 
                     # Commit activity chart
                     activity_df = (
@@ -160,26 +193,27 @@ def main():
                     st.plotly_chart(fig)
 
                     # Author activity chart
-                    author_df = commit_df["author_name"].value_counts().reset_index()
-                    author_df.columns = ["Author", "Commits"]
+                    author_df = commit_df["author"].value_counts().reset_index()
+                    # author_df.columns = ["Author", "Commits"]
+                    # set columns through a method
 
                     fig = px.bar(
                         author_df.head(10),
-                        x="Author",
-                        y="Commits",
+                        x="author",
+                        y="count",
                         title="Top Contributors",
-                        labels={"Author": "Author", "Commits": "Number of Commits"},
+                        labels={"author": "Author", "count": "Number of Commits"},
                     )
                     st.plotly_chart(fig)
 
                     # Commit table
                     st.subheader("Recent Commits")
                     st.dataframe(
-                        commit_df[["date", "author_name", "message", "files_changed"]]
+                        commit_df[["date", "author", "message", "files_changed"]]
                         .rename(
                             columns={
                                 "date": "Date",
-                                "author_name": "Author",
+                                "author": "Author",
                                 "message": "Message",
                                 "files_changed": "Files Changed",
                             }
