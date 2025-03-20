@@ -187,7 +187,7 @@ def main() -> None:
 
                     with tab2:
                         st.code(
-                            json.dumps(structure_raw_json, indent=2),
+                            structure_raw_json,
                             language="json",
                         )
 
