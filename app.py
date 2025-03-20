@@ -106,7 +106,7 @@ def main() -> None:
                     report: RepoReport = repo_stats.generate_report(
                         start_date=start_date,
                         end_date=end_date,
-                        max_depth=max_depth if max_depth > 0 else None,
+                        max_depth=max_depth,
                         exclude_patterns=exclude_patterns,
                     )
 
