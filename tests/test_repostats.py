@@ -8,7 +8,7 @@ from typing import Any, Generator
 import git
 import pytest
 
-from src.file_structure import FileStructureAnalyzer
+from src.file_structure import FileStructureAnalyzer, TreeSignal
 from src.repo_stats import (
     BasicStats,
     CommitEntry,
@@ -169,7 +169,7 @@ class TestRepoStats:
         assert "test.py" in repo_contents
         assert "test2.txt" in repo_contents
         assert "subdir" in repo_contents
-        assert repo_contents["subdir"] == "..."  # type: ignore
+        assert repo_contents["subdir"] == TreeSignal.END  # type: ignore
 
     def test_get_file_structure_with_exclude(self, temp_git_repo: str) -> None:
         """Test getting file structure with exclude patterns."""

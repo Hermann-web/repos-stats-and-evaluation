@@ -1,17 +1,21 @@
 import json
 import re
+from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+
+class TreeSignal(str, Enum):
+    STOP = auto()
+    END = auto()
+    EXCLUDE = auto()
 
 
 class FileStructureAnalyzer:
     """A class to analyze and retrieve file structure from a directory."""
 
     # Define the TreeObject type
-    TreeObject = str | dict[str, "TreeObject"]
-
-    END_SIGNAL = "..."
-    EXCLUDE_SIGNAL = ""
+    TreeObject = str | TreeSignal | dict[str, "TreeObject"]
 
     def __init__(
         self,
@@ -63,23 +67,23 @@ class FileStructureAnalyzer:
             TreeObject: A tree representation of the path
         """
 
-        assert self.EXCLUDE_SIGNAL != self.END_SIGNAL
-
         if self.max_depth is not None and current_depth > self.max_depth:
-            return self.END_SIGNAL
+            return TreeSignal.STOP if path.is_file() else TreeSignal.END
 
         path_str = str(path)
         if self.should_exclude(path_str):
-            return self.EXCLUDE_SIGNAL
+            return TreeSignal.EXCLUDE
 
         if path.is_file():
             return str(path.name)
 
         result = {}
         try:
-            for child in sorted(path.iterdir()):
+            for child in sorted(
+                path.iterdir(), key=lambda x: f"{x.is_file()}{x.suffix}{x.stem}"
+            ):
                 child_result = self.build_tree(child, current_depth + 1)
-                if child_result != self.EXCLUDE_SIGNAL:
+                if child_result not in (TreeSignal.EXCLUDE,):
                     result[child.name] = child_result
         except PermissionError:
             return "Permission denied"
@@ -97,7 +101,9 @@ class FileStructureAnalyzer:
         return tree
 
     def get_formated_tree(self) -> tuple[dict[str, TreeObject], str, list[str]]:
-        def format_tree(tree: dict[str, Any], indent: str = "") -> list[str]:
+        def format_tree(
+            tree: dict[str, FileStructureAnalyzer.TreeObject], indent: str = ""
+        ) -> list[str]:
             result = []
             for i, (key, value) in enumerate(tree.items()):
                 is_last = i == len(tree) - 1
@@ -107,8 +113,10 @@ class FileStructureAnalyzer:
                     result.append(f"{indent}{prefix}{key}/")
                     next_indent = indent + ("    " if is_last else "│   ")
                     result.extend(format_tree(value, next_indent))
-                elif value == self.END_SIGNAL:
+                elif value == TreeSignal.END:
                     result.append(f"{indent}{prefix}{key}/ ...")
+                elif value == TreeSignal.STOP:
+                    result.append(f"{indent}{prefix}{key}")
                 else:
                     result.append(f"{indent}{prefix}{value}")
             return result
