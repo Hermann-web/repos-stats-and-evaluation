@@ -44,6 +44,8 @@ class FileStructureAnalyzer:
         Returns:
             bool: True if the path should be excluded, False otherwise
         """
+        if Path(path_str).name == ".git":
+            return True
         for pattern in self.compiled_patterns:
             if pattern.search(path_str):
                 return True

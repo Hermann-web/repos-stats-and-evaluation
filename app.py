@@ -63,7 +63,7 @@ def main() -> None:
             )
             exclude_patterns_input = st.sidebar.text_area(
                 "Exclude Patterns (Regex, one per line)",
-                value=".git\n__pycache__\n.pytest_cache\n.venv\nnode_modules",
+                value=".DS_Store\n__pycache__\n.pytest_cache\n.venv\nnode_modules",
                 help="Regular expressions for paths to exclude, one per line",
             )
             exclude_patterns = [
