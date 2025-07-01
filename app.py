@@ -558,6 +558,12 @@ def render_evaluation_display(
 
 
 def main() -> None:
+    query_params = st.query_params
+    repo_from_url = query_params.get("repo", None)
+
+    print(f"Query params: {query_params}")
+    print(f"Selected repo from URL: {repo_from_url}")
+
     end_date_default = datetime(2025, 3, 18, 23, 0, 0, tzinfo=timezone.utc)
     start_date_default = datetime(2025, 3, 7, 23, 0, 0, tzinfo=timezone.utc)
 
@@ -584,12 +590,32 @@ def main() -> None:
             find_repositories(repo_base_path), key=lambda x: Path(x).name
         )
         if repo_paths:
+            # Get repo names
             repo_names = [Path(path).name for path in repo_paths]
+
+            # Determine selected index from URL
+            selected_repo_index = 0
+            if repo_from_url is not None:
+                # If repo_from_url is provided, find its index
+                if repo_from_url in repo_names:
+                    selected_repo_index = repo_names.index(repo_from_url)
+                else:
+                    st.sidebar.warning(
+                        f"Repository '{repo_from_url}' not found in the list."
+                    )
+
+            # Selectbox
             selected_repo_index = st.sidebar.selectbox(
                 "Select Repository",
                 range(len(repo_names)),
+                index=selected_repo_index,
                 format_func=lambda i: repo_names[i],
             )
+
+            # Sync to URL if user picks from selectbox
+            selected_repo_name = repo_names[selected_repo_index]
+            if selected_repo_name != repo_from_url:
+                st.query_params["repo"] = selected_repo_name
 
             st.sidebar.header("File Structure Options")
             show_file_structure = st.sidebar.checkbox("Show File Structure", value=True)
@@ -637,39 +663,39 @@ def main() -> None:
             # Analyze selected repository
             selected_repo_path = repo_paths[selected_repo_index]
 
+            with st.spinner(
+                f"Analyzing repository: {repo_names[selected_repo_index]}..."
+            ):
+                repo_stats = RepoStats(selected_repo_path)
+                report: RepoReport = repo_stats.generate_report(
+                    start_date=start_date,
+                    end_date=end_date,
+                    max_depth=max_depth,
+                    exclude_patterns=exclude_patterns,
+                )
+
+            # Display repository link with a nice button
+            st.markdown(
+                f"""
+                <div style="text-align: center; margin-top: 10px;">
+                    <a href="{report.repository_url}" target="_blank" style="
+                        background-color: #0078ff; 
+                        color: white; 
+                        padding: 10px 20px; 
+                        border-radius: 5px; 
+                        text-decoration: none; 
+                        font-size: 16px;
+                    ">Repository : {report.repository}</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
             # Create tabs for different views
             tab1, tab2 = st.tabs(["📊 Repository Analysis", "📋 Project Evaluation"])
 
             with tab1:
                 try:
-                    with st.spinner(
-                        f"Analyzing repository: {repo_names[selected_repo_index]}..."
-                    ):
-                        repo_stats = RepoStats(selected_repo_path)
-                        report: RepoReport = repo_stats.generate_report(
-                            start_date=start_date,
-                            end_date=end_date,
-                            max_depth=max_depth,
-                            exclude_patterns=exclude_patterns,
-                        )
-
-                    # Display repository link with a nice button
-                    st.markdown(
-                        f"""
-                        <div style="text-align: center; margin-top: 10px;">
-                            <a href="{report.repository_url}" target="_blank" style="
-                                background-color: #0078ff; 
-                                color: white; 
-                                padding: 10px 20px; 
-                                border-radius: 5px; 
-                                text-decoration: none; 
-                                font-size: 16px;
-                            ">Repository : {report.repository}</a>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
                     # Display repository statistics
                     col1, col2, col3 = st.columns([0.75, 0.75, 1.5])
 
