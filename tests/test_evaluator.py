@@ -58,15 +58,15 @@ def test_evaluator():
         assert "1/5" in summary
         print("✓ Test 6 passed: Summary generation")
 
-        # Test 7: Invalid YAML handling
-        # Write invalid YAML
+        # Test 7: Invalid JSON handling
+        # Write invalid JSON
         with open(evaluator.evaluation_file_path, "w") as f:
             f.write("invalid: json: content: [")
 
         eval_obj, is_valid, error = evaluator.load_evaluation()
         assert eval_obj is None
         assert not is_valid
-        assert "YAML parsing error" in error
-        print("✓ Test 7 passed: Invalid YAML handling")
+        assert "JSON parsing error" in error
+        print("✓ Test 7 passed: JSON parsing error")
 
         print("\n🎉 All tests passed!")
